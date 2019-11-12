@@ -1,0 +1,5 @@
+1;Computer;20000
+2;Smartphone;5000
+3;TV;6000
+4;Home Stereo;3000
+5;Radio Set;1000
