@@ -18,13 +18,20 @@ public class RTCalc extends JFrame {
 	JButton addItemButton;
 	JTable itemTable;
 	DefaultTableModel model;
-	JTextField totalText;
+	JTextArea totalText;
 	JFrame dialogBoxMSg;
 	JButton removeItemButton;
+	JLabel cashRecievedLabel;
+	JTextField inputCashReceived;
 	JButton cashOutButton;
 
 	double total = 0;
 	private Item item[] = new Item[10];
+
+	// error handling
+	final int NOITEMS = 0;
+	final int NOCASHRECIEVED = 1;
+	final int INSUFFICIENTPAYMENT = 2;
 
 	RTCalc() throws Exception{
 		mainWindow = new JFrame("TeslaTech");
@@ -40,14 +47,15 @@ public class RTCalc extends JFrame {
 
 		inputItemName = new JTextField("Search ...");
 		inputItemName.setBounds(5, 95, 150, 30);
+		// clear text on click
 		inputItemName.addMouseListener(new MouseAdapter(){
-            @Override
-            public void mouseClicked(MouseEvent e){
-                inputItemName.setText("");
-            }
+         @Override
+         	public void mouseClicked(MouseEvent e){
+            	inputItemName.setText("");
+  	       	}
         });
 
-		quantityLabel = new JLabel("Quantity (pcs)");
+		quantityLabel = new JLabel("Quantity (pcs):");
 		quantityLabel.setBounds(5, 130, 150, 30);
 
 		quantity = new JSpinner(new SpinnerNumberModel(1, 1, 999, 1));
@@ -59,8 +67,38 @@ public class RTCalc extends JFrame {
 		removeItemButton = new JButton("Remove item");
 		removeItemButton.setBounds(5, 235, 150, 30);
 
+		cashRecievedLabel = new JLabel("Cash Recieved:");
+		cashRecievedLabel.setBounds(5, 300, 150, 30);
+
+		inputCashReceived= new JTextField("Enter Amount...");
+		inputCashReceived.setBounds(5, 335, 150, 30);
+		// clear text on click
+		inputCashReceived.addMouseListener(new MouseAdapter(){
+         @Override
+         	public void mouseClicked(MouseEvent e){
+            	inputCashReceived.setText("");
+  	       	}
+        });
+
+		// give an error if input is not a number
+        inputCashReceived.addKeyListener(new KeyAdapter() {
+	        public void keyPressed(KeyEvent ke) {
+	            String value = inputCashReceived.getText();
+	            String totalToDisplay = Double.toString(total);
+	            int l = value.length();
+	            if (ke.getKeyChar() >= '0' && ke.getKeyChar() <= '9' || ke.getKeyChar() == '.' || ke.getKeyCode() == 8 || ke.getKeyCode() == 144) {
+	            }
+	            else if(ke.getKeyCode() == KeyEvent.VK_ENTER) {
+	            	inputCashReceived.addActionListener(new ListenToCashOut());
+	            }
+	            else {
+	               JOptionPane.showMessageDialog(null, "Invalid input");
+	            }
+	        }
+      	});
+
 		cashOutButton = new JButton("CASH OUT");
-		cashOutButton.setBounds(5, 300, 150, 30);
+		cashOutButton.setBounds(5, 370, 150, 30);
 
 		model = new DefaultTableModel();
 		itemTable = new JTable(model);
@@ -72,9 +110,9 @@ public class RTCalc extends JFrame {
 		tableContainer.setBounds(160, 60, 425, 300);
 		itemTable.setFillsViewportHeight(true);
 
-		totalText = new JTextField("Total: ");
+		totalText = new JTextArea("Total: ");
 		totalText.setBounds(325, 360, 262, 100);
-		totalText.setFont(new Font("Sans Serif", Font.BOLD, 24));
+		totalText.setFont(new Font("Sans Serif", Font.PLAIN, 18));
 		totalText.setEditable(false);
 
 		mainWindow.add(titleHeader);
@@ -84,6 +122,8 @@ public class RTCalc extends JFrame {
 		mainWindow.add(quantity);
 		mainWindow.add(addItemButton);
 		mainWindow.add(removeItemButton);
+		mainWindow.add(cashRecievedLabel);
+		mainWindow.add(inputCashReceived);
 		mainWindow.add(cashOutButton);
 		mainWindow.add(tableContainer);
 		mainWindow.add(totalText);
@@ -103,6 +143,7 @@ public class RTCalc extends JFrame {
 	    mainWindow.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 	}
 
+	// invoked if Add Item button is clicked
 	public void addItem() {
 		String searchQuery = inputItemName.getText();
         int itemCode = 0;
@@ -125,7 +166,7 @@ public class RTCalc extends JFrame {
        		total = total + (itemPrice * itemQuantity);
        		String totalToDisplay = Double.toString(total);
        		totalText.setText("Total: " + totalToDisplay);
-       		printReceipt();
+       		//printReceipt();
        	}
        	else if (searchQuery.equals("") || searchQuery.equals("Search ...")) {
        		JOptionPane.showMessageDialog(dialogBoxMSg, "Input is empty!");
@@ -135,6 +176,7 @@ public class RTCalc extends JFrame {
        	}
 	}
 
+	// invoked if Remove Item is clicked
 	public void removeItem() {
 		int numRows = itemTable.getSelectedRows().length;
 		int selectedRow = itemTable.getSelectedRow();
@@ -155,8 +197,7 @@ public class RTCalc extends JFrame {
 		}
 	}
 
-
-
+	// print a reciept at every successul transaction
 	public void printReceipt() {
 		try {
 			BufferedWriter writer1  = new BufferedWriter(new FileWriter("receipt.txt"));
@@ -164,7 +205,11 @@ public class RTCalc extends JFrame {
 			int row = 0;
 			int column = 0;
 
-			writer1.write("TeslaTech\n" + "The best tech store in town!\n");
+			String cash = inputCashReceived.getText();
+			double cashRecieved = Double.parseDouble(cash);
+			double change = cashRecieved - total;
+
+			writer1.write("TeslaTech\n" + "The best tech store in town!\n\n");
 			writer1.close();
 			BufferedWriter writer2 = new BufferedWriter(new  FileWriter("receipt.txt", true));
 
@@ -176,7 +221,7 @@ public class RTCalc extends JFrame {
 				row++;
 				writer2.append("item_code:" + itemCode + " item_name:" + itemName + " item_quantity:" + itemQuantity + " unit_ price:" + itemPrice + "\n");
 			}
-			writer2.append("Total: " + total);
+			writer2.append("\nTotal: " + total + "\nCash recieved: " + inputCashReceived.getText() + "\nChange: " + change);
 			writer2.close();
 
 		}
@@ -185,20 +230,48 @@ public class RTCalc extends JFrame {
 		
 	}
 
-	public void cashOut() {
-		printReceipt();
-		int rows = itemTable.getRowCount();
-		for(int i = rows - 1; i >= 0; i--) {
-			model.removeRow(i);
+	// invoked if Cash Out button is clicked
+	public void cashOut() throws TransactionException {
+		try {
+			String cash = inputCashReceived.getText();
+			double cashRecieved = Double.parseDouble(cash);
+			double change = cashRecieved - total;
+
+			if(itemTable.getRowCount() == 0) {
+				handleErr(NOITEMS);
+				return;
+			}
+			else if(change < 0.0) {
+				handleErr(INSUFFICIENTPAYMENT);
+				return;
+			}
+			else {
+				String totalToDisplay = Double.toString(total);
+				totalText.setText("Total: " + totalToDisplay + "\nCash recieved: " + inputCashReceived.getText() + "\nChange: " + change);
+				printReceipt();
+				int rows = itemTable.getRowCount();
+
+				JOptionPane.showMessageDialog(dialogBoxMSg, "Transaction Successful!");
+				for(int i = rows - 1; i >= 0; i--) {
+					model.removeRow(i);
+				}
+				total = 0;
+		       	totalText.setText("Total: ");
+		    }
 		}
-		JOptionPane.showMessageDialog(dialogBoxMSg, "Transaction Successful!");
-		total = 0;
-       	totalText.setText("Total: ");
+		catch(NumberFormatException numberFormatErr) {
+			handleErr(NOCASHRECIEVED);
+		}
 	}
 
-		class ListenToCashOut implements ActionListener {
+	class ListenToCashOut implements ActionListener {
         public void actionPerformed(ActionEvent e) {
-        	cashOut();
+        	try {
+        		cashOut();
+        	}
+        	catch(TransactionException transanctionE) {
+        		JOptionPane.showMessageDialog(null, transanctionE);
+        	}
         }
     }
 
@@ -258,4 +331,21 @@ public class RTCalc extends JFrame {
 	    	}
 	    }
 	 }
+
+
+	class TransactionException extends Exception {
+		String errStr; // describes the error 
+		public TransactionException(String str) {
+			errStr = str;
+		}
+		public String toString() {
+			return errStr;
+		}
+	}
+
+	private void handleErr(int error) throws TransactionException {
+		String[] err = { "No items purchased", "No cash recieved",
+			"Insufficient payment"};
+		throw new TransactionException(err[error]);
+	}
 }
